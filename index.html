@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超強大混搭監控面板 (支援影像與動態圖片)</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ff9900;
+            text-shadow: 0 0 10px rgba(255,153,0,0.3);
+        }
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .cam-card {
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+        .cam-title {
+            padding: 10px 15px;
+            background: #2d2d2d;
+            font-size: 16px;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            color: #e0e0e0;
+        }
+        .video-wrapper {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 比例 */
+            background: #000;
+        }
+        video, img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📡 全省綜合路況即時監控系統</h1>
+
+    <div class="monitor-grid" id="monitorGrid"></div>
+
+<script>
+    // ===================================================
+    // 📝 綜合設定陣列：支援影片(hls)與高公局圖片(mjpeg)
+    // ===================================================
+    const camList = [
+        { 
+            name: '白宮行館門口', 
+            type: 'hls', // 影片型
+            url: 'https://cctvatis4.ntpc.gov.tw/hls/C000239/live.m3u8' 
+        },
+        { 
+            name: '國３南→國５排隊１', 
+            type: 'mjpeg', // 圖片刷新型
+            url: 'https://cctvn.freeway.gov.tw/abs2mjpg/bmjpg?camera=31510' // 去掉後面變動的 &t=
+        },
+        { 
+            name: '國３南→國５排隊２', 
+            type: 'mjpeg', // 圖片刷新型
+            url: 'https://cctvn.freeway.gov.tw/abs2mjpg/bmjpg?camera=31470' // 去掉後面變動的 &t=
+        },
+        { 
+            name: '國３南→國５排隊３', 
+            type: 'mjpeg', // 圖片刷新型
+            url: 'https://cctvn.freeway.gov.tw/abs2mjpg/bmjpg?camera=31410' // 去掉後面變動的 &t=
+        }
+    ];
+
+    const grid = document.getElementById('monitorGrid');
+
+    camList.forEach((cam, index) => {
+        const card = document.createElement('div');
+        card.className = 'cam-card';
+
+        // 根據不同類型生成不同 HTML 標籤
+        if (cam.type === 'hls') {
+            const videoId = `video-${index}`;
+            card.innerHTML = `
+                <div class="cam-title">${cam.name}</div>
+                <div class="video-wrapper">
+                    <video id="${videoId}" controls autoplay muted playsinline></video>
+                </div>
+            `;
+            grid.appendChild(card);
+
+            // 驅動 HLS 播放器
+            const videoElement = document.getElementById(videoId);
+            if (Hls.isSupported()) {
+                const hls = new Hls({ maxBufferSize: 0, maxBufferLength: 5, liveSyncDurationCount: 3 });
+                hls.loadSource(cam.url);
+                hls.attachMedia(videoElement);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play());
+            }
+        } 
+        else if (cam.type === 'mjpeg') {
+            const imgId = `img-${index}`;
+            card.innerHTML = `
+                <div class="cam-title">${cam.name}</div>
+                <div class="video-wrapper">
+                    <img id="${imgId}" src="${cam.url}&t=${Date.now()}" alt="即時路況">
+                </div>
+            `;
+            grid.appendChild(card);
+
+            // 💡 核心：每 500 毫秒（0.5秒）強制更新一次圖片網址的時間戳
+            const imgElement = document.getElementById(imgId);
+            setInterval(() => {
+                imgElement.src = `${cam.url}&t=${Date.now()}`;
+            }, 5000); // 如果想要畫面更流暢，可以把 500 改成 200 (毫秒)
+        }
+    });
+</script>
+
+</body>
+</html>
